@@ -1,0 +1,106 @@
+From 65f8a30f9865a3b059d5dffc31e5e048244fc4a9 Mon Sep 17 00:00:00 2001
+From: Joseph Zemek <joseph@robinhood.com>
+Date: Thu, 4 Mar 2021 13:26:21 -0800
+Subject: [PATCH 1/2] try getting k8s pod/ns from docker
+
+Signed-off-by: Joseph Zemek <joseph@robinhood.com>
+---
+ userspace/libsinsp/filterchecks.cpp | 60 ++++++++++++++++++++++++++++-
+ userspace/libsinsp/filterchecks.h   |  2 +
+ 2 files changed, 61 insertions(+), 1 deletion(-)
+
+diff --git a/userspace/libsinsp/filterchecks.cpp b/userspace/libsinsp/filterchecks.cpp
+index 2cccf937..1ca99034 100644
+--- a/userspace/libsinsp/filterchecks.cpp
++++ b/userspace/libsinsp/filterchecks.cpp
+@@ -5995,7 +5995,9 @@ const filtercheck_field_info sinsp_filter_check_container_fields[] =
+ 	{PT_CHARBUF, EPF_NONE, PF_NA, "container.image.digest", "the container image registry digest (e.g. sha256:d977378f890d445c15e51795296e4e5062f109ce6da83e0a355fc4ad8699d27)."},
+ 	{PT_CHARBUF, EPF_NONE, PF_NA, "container.healthcheck", "The container's health check. Will be the null value (\"N/A\") if no healthcheck configured, \"NONE\" if configured but explicitly not created, and the healthcheck command line otherwise"},
+ 	{PT_CHARBUF, EPF_NONE, PF_NA, "container.liveness_probe", "The container's liveness probe. Will be the null value (\"N/A\") if no liveness probe configured, the liveness probe command line otherwise"},
+-	{PT_CHARBUF, EPF_NONE, PF_NA, "container.readiness_probe", "The container's readiness probe. Will be the null value (\"N/A\") if no readiness probe configured, the readiness probe command line otherwise"}
++	{PT_CHARBUF, EPF_NONE, PF_NA, "container.readiness_probe", "The container's readiness probe. Will be the null value (\"N/A\") if no readiness probe configured, the readiness probe command line otherwise"},
++	{PT_CHARBUF, EPF_NONE, PF_NA, "k8s.pod.name", "Kubernetes pod name."},
++	{PT_CHARBUF, EPF_NONE, PF_NA, "k8s.ns.name", "Kubernetes namespace name."}
+ };
+ 
+ sinsp_filter_check_container::sinsp_filter_check_container()
+@@ -6469,7 +6471,63 @@ uint8_t* sinsp_filter_check_container::extract(sinsp_evt *evt, OUT uint32_t* len
+ 			m_tstr = "NONE";
+ 			RETURN_EXTRACT_STRING(m_tstr);
+ 		}
++		break;
++	case TYPE_CONTAINER_K8S_POD_NAME:
++		if(tinfo->m_container_id.empty())
++		{
++			return NULL;
++		}
++		else
++		{
++			const sinsp_container_info::ptr_t container_info =
++				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
++			if(!container_info)
++			{
++				return NULL;
++			}
+ 
++			if(container_info->m_labels.empty())
++			{
++				return NULL;
++			}
++
++			if(container_info->m_labels.count("io.kubernetes.pod.name") == 0)
++			{
++				return NULL;
++			}
++			m_tstr = container_info->m_labels.at("io.kubernetes.pod.name");
++		}
++
++		RETURN_EXTRACT_STRING(m_tstr);
++		break;
++	case TYPE_CONTAINER_K8S_NS_NAME:
++		if(tinfo->m_container_id.empty())
++		{
++			return NULL;
++		}
++		else
++		{
++			const sinsp_container_info::ptr_t container_info =
++				m_inspector->m_container_manager.get_container(tinfo->m_container_id);
++			if(!container_info)
++			{
++				return NULL;
++			}
++
++			if(container_info->m_labels.empty())
++			{
++				return NULL;
++			}
++
++			if(container_info->m_labels.count("io.kubernetes.pod.namespace") == 0)
++			{
++				return NULL;
++			}
++			m_tstr = container_info->m_labels.at("io.kubernetes.pod.namespace");
++		}
++
++		RETURN_EXTRACT_STRING(m_tstr);
++		break;
+ 	default:
+ 		ASSERT(false);
+ 		break;
+diff --git a/userspace/libsinsp/filterchecks.h b/userspace/libsinsp/filterchecks.h
+index 5a49ac98..b4c58f85 100644
+--- a/userspace/libsinsp/filterchecks.h
++++ b/userspace/libsinsp/filterchecks.h
+@@ -733,6 +733,8 @@ public:
+ 		TYPE_CONTAINER_HEALTHCHECK,
+ 		TYPE_CONTAINER_LIVENESS_PROBE,
+ 		TYPE_CONTAINER_READINESS_PROBE,
++		TYPE_CONTAINER_K8S_POD_NAME,
++		TYPE_CONTAINER_K8S_NS_NAME,
+ 	};
+ 
+ 	sinsp_filter_check_container();
+-- 
+2.30.2
+
