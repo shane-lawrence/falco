@@ -25,7 +25,4 @@ ExternalProject_Add(
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
   TEST_COMMAND ""
-  PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/libscap.patch && patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/luajit.patch
-  PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/0001-try-getting-k8s-pod-ns-from-docker.patch
-  PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/0002-get-all-pod-metadata-available.patch
-) 
+  PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/libscap.patch && patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/patch/luajit.patch)
